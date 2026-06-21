@@ -1,0 +1,32 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - work
+
+jobs:
+  ruby:
+    name: Ruby tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.1"
+          bundler-cache: true
+
+      - name: Run test suite
+        run: bundle exec rake test
+
+      - name: Smoke test CLI
+        run: |
+          printf 'PDF Difference Monitoring Service\n5 minutes\nEngineering managers\nApprove an MVP pilot\n' | bin/slidea --output /tmp/slidea-smoke.md
+          test -s /tmp/slidea-smoke.md
+          grep -q '# PDF Difference Monitoring Service' /tmp/slidea-smoke.md
