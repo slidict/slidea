@@ -13,7 +13,6 @@ Gem::Specification.new do |spec|
   spec.homepage = "https://labs.slidict.io/slidict/"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2.0"
-  spec.metadata["allowed_push_host"] = "https://rubygems.org"
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/slidict/slidict"
   spec.metadata["changelog_uri"] = "https://github.com/slidict/slidict/releases"
