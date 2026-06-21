@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    slidict (0.1.0)
+    slidict (0.1.2)
 
 GEM
   remote: https://rubygems.org/
