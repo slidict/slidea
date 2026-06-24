@@ -1,14 +1,15 @@
 name: Ruby Gem
 
 on:
-  workflow_run:
-    workflows: ["Changelog"]
-    types: [completed]
+  push:
+    branches:
+      - main
+    paths:
+      - lib/slidict/version.rb
 
 jobs:
   build:
     name: Build + Publish
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,7 +29,7 @@ jobs:
       - name: Validate release conditions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           version=$(ruby -e 'content = File.read("lib/slidict/version.rb"); match = content.match(/VERSION\s*=\s*"(\d+\.\d+\.\d+)"/); abort("VERSION not found") unless match; print match[1]')
           echo "Detected version: v${version}"
