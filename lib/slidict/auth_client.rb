@@ -37,7 +37,7 @@ module Slidict
       return response if response["access_token"]
 
       error = response["error"].to_s
-      raise Pending if error == "authorization_pending" || error == "slow_down"
+      raise Pending if %w[authorization_pending slow_down].include?(error)
 
       raise Error, response["error_description"] || error unless error.empty?
 
@@ -60,10 +60,10 @@ module Slidict
       return body if response.is_a?(Net::HTTPSuccess)
 
       raise Error, body["error_description"] || body["error"] || "HTTP #{response.code}"
-    rescue JSON::ParserError => error
-      raise Error, "invalid JSON response: #{error.message}"
-    rescue SystemCallError, Timeout::Error => error
-      raise Error, error.message
+    rescue JSON::ParserError => e
+      raise Error, "invalid JSON response: #{e.message}"
+    rescue SystemCallError, Timeout::Error => e
+      raise Error, e.message
     end
 
     def fetch!(hash, key)

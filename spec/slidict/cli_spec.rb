@@ -89,7 +89,7 @@ RSpec.describe Slidict::CLI do
         end
       end.new
       credentials = instance_double(Slidict::Credentials)
-      sleeper = instance_double(Kernel, sleep: nil)
+      sleeper = double("sleeper", sleep: nil)
       cli = described_class.new(
         input: input, output: output, auth_client: client, credentials: credentials, sleeper: sleeper
       )

@@ -142,23 +142,21 @@ module Slidict
 
       deadline = Time.now + device[:expires_in]
       loop do
-        begin
-          token = client.poll_token(device_code: device[:device_code])
-          path = credentials.write_cli_token!(
-            access_token: token.fetch("access_token"),
-            token_type: token.fetch("token_type", "Bearer"),
-            provider: token.fetch("provider", "github")
-          )
-          @output.puts "4. Saved CLI access token to #{path}"
-          return 0
-        rescue AuthClient::Pending
-          return login_expired if Time.now >= deadline
+        token = client.poll_token(device_code: device[:device_code])
+        path = credentials.write_cli_token!(
+          access_token: token.fetch("access_token"),
+          token_type: token.fetch("token_type", "Bearer"),
+          provider: token.fetch("provider", "github")
+        )
+        @output.puts "4. Saved CLI access token to #{path}"
+        return 0
+      rescue AuthClient::Pending
+        return login_expired if Time.now >= deadline
 
-          @sleeper.sleep(device[:interval])
-        end
+        @sleeper.sleep(device[:interval])
       end
-    rescue AuthClient::Error, KeyError => error
-      @output.puts "Error: GitHub login failed (#{error.message})"
+    rescue AuthClient::Error, KeyError => e
+      @output.puts "Error: GitHub login failed (#{e.message})"
       1
     end
 
