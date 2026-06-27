@@ -18,7 +18,7 @@ module Slidict
     end
 
     def request_device_code
-      response = post_json("/api/cli/device/code", provider: "github")
+      response = post_json("/api/cli/device/code", { provider: "github" })
       {
         device_code: fetch!(response, "device_code"),
         user_code: fetch!(response, "user_code"),
@@ -31,8 +31,8 @@ module Slidict
     def poll_token(device_code:)
       response = post_json(
         "/api/cli/device/token",
-        device_code: device_code,
-        grant_type: "urn:ietf:params:oauth:grant-type:device_code"
+        { device_code: device_code, grant_type: "urn:ietf:params:oauth:grant-type:device_code" },
+        raise_on_http_error: false
       )
       return response if response["access_token"]
 
@@ -46,7 +46,7 @@ module Slidict
 
     private
 
-    def post_json(path, payload)
+    def post_json(path, payload, raise_on_http_error: true)
       uri = URI.join(base_url, path)
       request = Net::HTTP::Post.new(uri)
       request["Accept"] = "application/json"
@@ -57,7 +57,7 @@ module Slidict
         http.request(request)
       end
       body = response.body.to_s.empty? ? {} : JSON.parse(response.body)
-      return body if response.is_a?(Net::HTTPSuccess)
+      return body if response.is_a?(Net::HTTPSuccess) || !raise_on_http_error
 
       raise Error, body["error_description"] || body["error"] || "HTTP #{response.code}"
     rescue JSON::ParserError => e
