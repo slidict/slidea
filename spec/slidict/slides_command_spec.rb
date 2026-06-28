@@ -186,6 +186,49 @@ RSpec.describe Slidict::SlidesCommand do
       expect(status).to eq(1)
       expect(output.string).to include("not authenticated")
     end
+
+    it "logs in automatically when no CLI token is saved and a login flow is injected" do
+      credentials = instance_double(Slidict::Credentials)
+      allow(credentials).to receive(:read_cli_token).and_return(nil, { access_token: "tok", token_type: "Bearer" })
+      allow(Slidict::SlidesClient).to receive(:new).and_return(client)
+      allow(client).to receive(:list).and_return("slides" => [], "has_more" => false)
+      command = described_class.new(output: output, credentials: credentials, reauthenticate: -> { 0 })
+
+      status = command.run(["list"])
+
+      expect(status).to eq(0)
+    end
+
+    it "logs in and retries once when the API rejects the token as invalid" do
+      credentials = instance_double(Slidict::Credentials, read_cli_token: { access_token: "tok", token_type: "Bearer" })
+      allow(Slidict::SlidesClient).to receive(:new).and_return(client)
+      attempt = 0
+      allow(client).to receive(:create) do
+        attempt += 1
+        raise Slidict::SlidesClient::Unauthorized, "invalid_token" if attempt == 1
+
+        { "id" => 1, "title" => "Title", "status" => "draft", "visibility" => "public",
+          "updated_at" => "2026-06-27", "body" => "hello" }
+      end
+      command = described_class.new(output: output, credentials: credentials, reauthenticate: -> { 0 })
+
+      status = command.run(["create", "--title", "Title", "--body", "hello"])
+
+      expect(status).to eq(0)
+      expect(output.string).to include("Created slide #1 (draft)")
+    end
+
+    it "reports the error when the login flow itself fails after an invalid token" do
+      credentials = instance_double(Slidict::Credentials, read_cli_token: { access_token: "tok", token_type: "Bearer" })
+      allow(Slidict::SlidesClient).to receive(:new).and_return(client)
+      allow(client).to receive(:create).and_raise(Slidict::SlidesClient::Unauthorized, "invalid_token")
+      command = described_class.new(output: output, credentials: credentials, reauthenticate: -> { 1 })
+
+      status = command.run(["create", "--title", "Title", "--body", "hello"])
+
+      expect(status).to eq(1)
+      expect(output.string).to include("Error: invalid_token")
+    end
   end
 
   describe "#publish" do

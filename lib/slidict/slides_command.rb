@@ -3,10 +3,11 @@
 module Slidict
   # Implements the `slidict slides <list|show|create|edit>` subcommands.
   class SlidesCommand
-    def initialize(output:, credentials: nil, client: nil)
+    def initialize(output:, credentials: nil, client: nil, reauthenticate: nil)
       @output = output
       @credentials = credentials || Credentials.new
       @client = client
+      @reauthenticate = reauthenticate
     end
 
     def run(argv)
@@ -137,22 +138,31 @@ module Slidict
     end
 
     def submit(verb)
-      slide = yield
-      @output.puts "#{verb} slide ##{slide["id"]} (draft)"
-      print_slide_detail(slide)
-      0
-    rescue SlidesClient::NotFound
-      @output.puts "Error: slide not found"
-      1
-    rescue SlidesClient::NotEditable
-      @output.puts "Error: this slide is already published. Edit it from the Web UI instead."
-      1
-    rescue SlidesClient::RateLimited
-      print_rate_limited
-    rescue SlidesClient::Unprocessable => e
-      print_unprocessable(e)
-    rescue SlidesClient::Error => e
-      print_client_error(e)
+      reauthenticated = false
+      begin
+        slide = yield
+        @output.puts "#{verb} slide ##{slide["id"]} (draft)"
+        print_slide_detail(slide)
+        0
+      rescue SlidesClient::NotFound
+        @output.puts "Error: slide not found"
+        1
+      rescue SlidesClient::NotEditable
+        @output.puts "Error: this slide is already published. Edit it from the Web UI instead."
+        1
+      rescue SlidesClient::RateLimited
+        print_rate_limited
+      rescue SlidesClient::Unprocessable => e
+        print_unprocessable(e)
+      rescue SlidesClient::Unauthorized => e
+        if !reauthenticated && reauthenticate!
+          reauthenticated = true
+          retry
+        end
+        print_client_error(e)
+      rescue SlidesClient::Error => e
+        print_client_error(e)
+      end
     end
 
     def read_body(options)
@@ -164,10 +174,20 @@ module Slidict
     def client
       @client ||= begin
         token = @credentials.read_cli_token
+        token = @credentials.read_cli_token if token.nil? && reauthenticate!
         raise ArgumentError, "not authenticated. Run `slidict auth` first." unless token
 
         SlidesClient.new(access_token: token[:access_token], token_type: token[:token_type])
       end
+    end
+
+    # Triggers the injected login flow (see Slidict::CLI#auth) and clears the
+    # memoized client so the next call to `client` picks up the fresh token.
+    def reauthenticate!
+      return false unless @reauthenticate
+
+      @client = nil
+      @reauthenticate.call.zero?
     end
 
     def print_slide_list(result)

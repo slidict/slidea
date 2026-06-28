@@ -196,7 +196,7 @@ module Slidict
     end
 
     def slides_command
-      @slides_command ||= SlidesCommand.new(output: @output, credentials: @credentials)
+      @slides_command ||= SlidesCommand.new(output: @output, credentials: @credentials, reauthenticate: method(:auth))
     end
 
     def body_format_for(framework)
