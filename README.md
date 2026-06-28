@@ -53,6 +53,20 @@ bin/slidict \
   --output slides.adoc
 ```
 
+Add `--publish` to also save the generated slides to slidict.io as a draft (requires
+`slidict auth` first). Pass `--slide-id` to edit an existing draft instead of creating a
+new one:
+
+```bash
+# Create a new draft on slidict.io from the generated slides
+bin/slidict --topic "PDF Difference Monitoring Service" --duration "5 minutes" \
+  --audience "Engineering managers" --goal "Approve an MVP pilot" --publish
+
+# Edit an existing draft (slide #42) instead of creating a new one
+bin/slidict --topic "PDF Difference Monitoring Service" --duration "5 minutes" \
+  --audience "Engineering managers" --goal "Approve an MVP pilot" --slide-id 42
+```
+
 ## Output files
 
 Choose the framework and output path that match the presentation tool you want to use. If you omit `--output`, Slidict chooses a framework-specific default:
@@ -92,6 +106,9 @@ bin/slidict slides edit <id> [--title TEXT] [--body TEXT | --file PATH] [--body-
 - `create`/`edit` are rate limited to once per minute per user.
 
 Run `bin/slidict slides -h` for the full list of options.
+
+`bin/slidict --publish` and `--slide-id` (see [Usage](#usage)) wrap this same `create`/`edit`
+behavior so you can save the slides you just generated straight to slidict.io.
 
 ## Configuration
 

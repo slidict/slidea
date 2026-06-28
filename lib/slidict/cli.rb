@@ -41,8 +41,8 @@ module Slidict
       if client
         begin
           slides = client.generate_slides(deck)
-        rescue LLMClient::Error => error
-          @output.puts "Error: LLM request failed (#{error.message})"
+        rescue LLMClient::Error => e
+          @output.puts "Error: LLM request failed (#{e.message})"
           return 1
         end
         deck = Deck.new(
@@ -52,11 +52,15 @@ module Slidict
       end
 
       path = options[:output]
-      File.write(path, @renderer.render(deck))
+      content = @renderer.render(deck)
+      File.write(path, content)
       @output.puts "Created #{path}"
+
+      return publish_to_slidict(deck, content, options) if options[:publish] || options[:slide_id]
+
       0
-    rescue ArgumentError => error
-      @output.puts "Error: #{error.message}"
+    rescue ArgumentError => e
+      @output.puts "Error: #{e.message}"
       @output.puts
       print_help
       1
@@ -107,6 +111,14 @@ module Slidict
           options[:llm_model] = fetch_value!(args, arg)
         when "--no-llm"
           options[:no_llm] = true
+        when "--publish"
+          options[:publish] = true
+        when "--slide-id"
+          options[:slide_id] = fetch_value!(args, arg)
+        when "--slide-title"
+          options[:slide_title] = fetch_value!(args, arg)
+        when "--visibility"
+          options[:visibility] = fetch_value!(args, arg)
         else
           raise ArgumentError, "unknown option #{arg}"
         end
@@ -134,8 +146,8 @@ module Slidict
     def verify_connection(client)
       client.verify_connection!
       true
-    rescue LLMClient::Error => error
-      @output.puts "Error: LLM request failed (#{error.message})"
+    rescue LLMClient::Error => e
+      @output.puts "Error: LLM request failed (#{e.message})"
       false
     end
 
@@ -170,8 +182,25 @@ module Slidict
     end
 
     def slides(args)
-      command = @slides_command || SlidesCommand.new(output: @output, credentials: @credentials)
-      command.run(args)
+      slides_command.run(args)
+    end
+
+    def publish_to_slidict(deck, content, options)
+      slides_command.publish(
+        id: options[:slide_id],
+        title: options[:slide_title] || deck.topic,
+        body: content,
+        body_format: body_format_for(deck.framework),
+        visibility: options[:visibility]
+      )
+    end
+
+    def slides_command
+      @slides_command ||= SlidesCommand.new(output: @output, credentials: @credentials)
+    end
+
+    def body_format_for(framework)
+      framework.to_s.downcase == "asciidoctor-revealjs" ? "asciidoc" : "markdown"
     end
 
     def login_expired
@@ -217,6 +246,13 @@ module Slidict
             --llm-api-key KEY  API key for the LLM endpoint (env: SLIDICT_LLM_API_KEY)
             --llm-model NAME   Model name to request (env: SLIDICT_LLM_MODEL, default: gpt-4o-mini)
             --no-llm           Skip the LLM call and use the built-in slide template
+            --publish          Publish the generated slides to slidict.io as a draft
+                               (requires `slidict auth`; creates a new slide, or edits
+                               an existing one when --slide-id is given)
+            --slide-id ID      Edit this existing draft instead of creating a new one
+                               (implies --publish)
+            --slide-title TEXT Title for the published slide (default: --topic)
+            --visibility VIS   public, unlisted, or group_only (default: public)
         -o, --output PATH      Output file (default depends on --framework)
         -h, --help             Show this help
       HELP

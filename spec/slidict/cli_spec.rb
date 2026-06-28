@@ -203,6 +203,50 @@ RSpec.describe Slidict::CLI do
       end
     end
 
+    it "publishes the generated slides as a new draft when --publish is given" do
+      slides_command = instance_double(Slidict::SlidesCommand, publish: 0)
+      cli = described_class.new(input: input, output: output, slides_command: slides_command)
+
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, "slides.md")
+
+        status = cli.run([
+                           "--topic", "Observability", "--duration", "10 minutes",
+                           "--audience", "SREs", "--goal", "adopt the checklist",
+                           "--output", path, "--publish", "--visibility", "unlisted"
+                         ])
+
+        expect(status).to eq(0)
+        expect(slides_command).to have_received(:publish) do |**kwargs|
+          expect(kwargs[:id]).to be_nil
+          expect(kwargs[:title]).to eq("Observability")
+          expect(kwargs[:body_format]).to eq("markdown")
+          expect(kwargs[:visibility]).to eq("unlisted")
+          expect(kwargs[:body]).to include("# Observability")
+        end
+      end
+    end
+
+    it "edits an existing draft when --slide-id is given" do
+      slides_command = instance_double(Slidict::SlidesCommand, publish: 0)
+      cli = described_class.new(input: input, output: output, slides_command: slides_command)
+
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, "slides.adoc")
+
+        cli.run([
+                  "--topic", "Observability", "--duration", "10 minutes",
+                  "--audience", "SREs", "--goal", "adopt the checklist",
+                  "--framework", "asciidoctor-revealjs", "--output", path, "--slide-id", "42"
+                ])
+
+        expect(slides_command).to have_received(:publish) do |**kwargs|
+          expect(kwargs[:id]).to eq("42")
+          expect(kwargs[:body_format]).to eq("asciidoc")
+        end
+      end
+    end
+
     it "delegates the slides command to SlidesCommand" do
       slides_command = instance_double(Slidict::SlidesCommand, run: 0)
       cli = described_class.new(input: input, output: output, slides_command: slides_command)

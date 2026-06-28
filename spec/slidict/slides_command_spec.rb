@@ -187,4 +187,34 @@ RSpec.describe Slidict::SlidesCommand do
       expect(output.string).to include("not authenticated")
     end
   end
+
+  describe "#publish" do
+    it "creates a new draft when no id is given, even for body text starting with a dash" do
+      allow(client).to receive(:create)
+        .with(title: "Observability", body: "---\nfoo: bar\n---\n# Observability", body_format: "markdown",
+              visibility: nil)
+        .and_return("id" => 1, "title" => "Observability", "status" => "draft", "visibility" => "public",
+                    "updated_at" => "2026-06-27", "body" => "---\nfoo: bar\n---\n# Observability")
+
+      status = command.publish(
+        body: "---\nfoo: bar\n---\n# Observability", title: "Observability", body_format: "markdown"
+      )
+
+      expect(status).to eq(0)
+      expect(output.string).to include("Created slide #1 (draft)")
+    end
+
+    it "edits the given draft when an id is given" do
+      allow(client).to receive(:update)
+        .with("1", title: "Observability", body: "hello", body_format: "markdown", visibility: "unlisted")
+        .and_return("id" => 1, "title" => "Observability", "status" => "draft", "visibility" => "unlisted",
+                    "updated_at" => "2026-06-27", "body" => "hello")
+
+      status = command.publish(id: "1", body: "hello", title: "Observability", body_format: "markdown",
+                               visibility: "unlisted")
+
+      expect(status).to eq(0)
+      expect(output.string).to include("Updated slide #1 (draft)")
+    end
+  end
 end

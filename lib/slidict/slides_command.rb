@@ -21,6 +21,14 @@ module Slidict
       1
     end
 
+    # Creates or edits a draft directly, bypassing argv parsing (and its
+    # "looks like a flag" checks, which would reject body text such as
+    # YAML frontmatter that happens to start with "-").
+    def publish(body:, id: nil, title: nil, body_format: nil, visibility: nil)
+      options = { id: id, title: title, body: body, body_format: body_format, visibility: visibility }
+      id ? edit(options) : create(options)
+    end
+
     private
 
     def parse(argv)
