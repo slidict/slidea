@@ -53,6 +53,20 @@ bin/slidict \
   --output slides.adoc
 ```
 
+Add `--publish` to also save the generated slides to slidict.io as a draft (requires
+`slidict auth` first). Pass `--slide-id` to edit an existing draft instead of creating a
+new one:
+
+```bash
+# Create a new draft on slidict.io from the generated slides
+bin/slidict --topic "PDF Difference Monitoring Service" --duration "5 minutes" \
+  --audience "Engineering managers" --goal "Approve an MVP pilot" --publish
+
+# Edit an existing draft (slide #42) instead of creating a new one
+bin/slidict --topic "PDF Difference Monitoring Service" --duration "5 minutes" \
+  --audience "Engineering managers" --goal "Approve an MVP pilot" --slide-id 42
+```
+
 ## Output files
 
 Choose the framework and output path that match the presentation tool you want to use. If you omit `--output`, Slidict chooses a framework-specific default:
@@ -62,6 +76,39 @@ Slidev                  -> slides.md
 Marp                    -> slides.md
 Asciidoctor Reveal.js   -> slides.adoc
 ```
+
+## Commands
+
+### `slidict auth`
+
+Authenticates the CLI with your GitHub account via the device code flow and saves a
+CLI access token to `~/.config/slidict/credentials.json`.
+
+```bash
+bin/slidict auth
+```
+
+### `slidict slides`
+
+Manage your slides on slidict.io using the CLI access token saved by `slidict auth`.
+
+```bash
+bin/slidict slides list [--page N]
+bin/slidict slides show <id>
+bin/slidict slides create [--title TEXT] [--body TEXT | --file PATH] [--body-format asciidoc|markdown] [--visibility public|unlisted|group_only]
+bin/slidict slides edit <id> [--title TEXT] [--body TEXT | --file PATH] [--body-format asciidoc|markdown] [--visibility public|unlisted|group_only]
+```
+
+- `create` and `edit` always save the slide as a draft. Publishing requires going through
+  the moderation flow on the Web UI; the CLI cannot publish a slide.
+- `edit` only works on slides that are still drafts; editing an already-published slide
+  must be done from the Web UI.
+- `create`/`edit` are rate limited to once per minute per user.
+
+Run `bin/slidict slides -h` for the full list of options.
+
+`bin/slidict --publish` and `--slide-id` (see [Usage](#usage)) wrap this same `create`/`edit`
+behavior so you can save the slides you just generated straight to slidict.io.
 
 ## Configuration
 
