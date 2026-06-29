@@ -28,6 +28,8 @@ module Slidict
         return lint(options[:args]) if options[:command] == "lint"
 
         config = build_config(options)
+        return print_available_models(config) if config.llm_enabled? && config.model.nil?
+
         client = llm_client_for(config)
         return 1 if client && !verify_connection(client)
 
@@ -153,6 +155,21 @@ module Slidict
           model: options[:llm_model],
           enabled: options[:no_llm] ? false : nil
         )
+      end
+
+      def print_available_models(config)
+        client = Llm::Client.new(base_url: config.base_url, api_key: config.api_key, model: nil)
+        models = client.list_models
+        if models.empty?
+          @output.puts "No models available at #{config.base_url}"
+        else
+          @output.puts "Available models (specify one with --llm-model NAME or SLIDICT_LLM_MODEL=NAME):"
+          models.each { |m| @output.puts "  #{m}" }
+        end
+        0
+      rescue Llm::Client::Error => e
+        @output.puts "Error: LLM request failed (#{e.message})"
+        1
       end
 
       def llm_client_for(config)
@@ -284,7 +301,7 @@ module Slidict
               --llm-base-url URL OpenAI Compatible API base URL (env: SLIDICT_LLM_BASE_URL).
                                  When omitted, the built-in slide template is used instead.
               --llm-api-key KEY  API key for the LLM endpoint (env: SLIDICT_LLM_API_KEY)
-              --llm-model NAME   Model name to request (env: SLIDICT_LLM_MODEL, default: gpt-4o-mini)
+              --llm-model NAME   Model name to request (env: SLIDICT_LLM_MODEL); omit to list available models
               --no-llm           Skip the LLM call and use the built-in slide template
               --publish          Publish the generated slides to slidict.io as a draft
                                  (requires `slidict auth`; creates a new slide, or edits

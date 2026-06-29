@@ -34,6 +34,35 @@ RSpec.describe Slidict::Llm::Client do
     end
   end
 
+  describe "#list_models" do
+    it "returns a sorted list of model IDs" do
+      stub_http_response({ "data" => [{ "id" => "mistral" }, { "id" => "llama3" }] }.to_json)
+
+      expect(client.list_models).to eq(%w[llama3 mistral])
+    end
+
+    it "returns an empty array when the data key is missing" do
+      stub_http_response({}.to_json)
+
+      expect(client.list_models).to eq([])
+    end
+
+    it "raises an Error when the endpoint responds with a failure" do
+      response = Net::HTTPBadRequest.new("1.1", "400", "Bad Request")
+      allow(response).to receive(:body).and_return("")
+      http = instance_double(Net::HTTP, request: response)
+      allow(Net::HTTP).to receive(:start).and_yield(http)
+
+      expect { client.list_models }.to raise_error(Slidict::Llm::Client::Error, /400/)
+    end
+
+    it "raises an Error when the response body is not valid JSON" do
+      stub_http_response("not json")
+
+      expect { client.list_models }.to raise_error(Slidict::Llm::Client::Error, /could not parse models response/)
+    end
+  end
+
   describe "#generate_slides" do
     it "parses a successful chat completion into slides" do
       content = [{ "title" => "Observability", "bullets" => ["Why it matters", "What changes"] }].to_json

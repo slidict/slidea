@@ -6,7 +6,7 @@ module Slidict
 
     attr_reader :base_url, :api_key, :model
 
-    def initialize(base_url: nil, api_key: nil, model: DEFAULT_MODEL, enabled: true)
+    def initialize(base_url: nil, api_key: nil, model: nil, enabled: true)
       @base_url = base_url
       @api_key = api_key
       @model = model
@@ -17,7 +17,7 @@ module Slidict
       new(
         base_url: env["SLIDICT_LLM_BASE_URL"],
         api_key: env["SLIDICT_LLM_API_KEY"],
-        model: env["SLIDICT_LLM_MODEL"] || DEFAULT_MODEL
+        model: env["SLIDICT_LLM_MODEL"]
       )
     end
 

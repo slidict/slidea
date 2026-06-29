@@ -27,7 +27,7 @@ RSpec.describe Slidict::Cli::Lint do
       findings = [Slidict::Lint::Finding.new(slide: 3, severity: "warning", message: "the point is unclear")]
       allow(linter).to receive(:lint).with(File.read(path), format: "markdown", translate: nil).and_return(findings)
 
-      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1"])
+      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1", "--llm-model", "llama3"])
 
       expect(status).to eq(0)
       expect(output.string).to include("[warning] Slide 3: the point is unclear")
@@ -37,7 +37,7 @@ RSpec.describe Slidict::Cli::Lint do
       path = write_deck
       allow(linter).to receive(:lint).and_return([])
 
-      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1"])
+      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1", "--llm-model", "llama3"])
 
       expect(status).to eq(0)
       expect(output.string).to include("No issues found.")
@@ -47,14 +47,40 @@ RSpec.describe Slidict::Cli::Lint do
       path = write_deck("talk.adoc", "= Title\n\n== First\n\n* one")
       expect(linter).to receive(:lint).with(anything, format: "asciidoc", translate: nil).and_return([])
 
-      cli.run([path, "--llm-base-url", "http://localhost:11434/v1"])
+      cli.run([path, "--llm-base-url", "http://localhost:11434/v1", "--llm-model", "llama3"])
     end
 
     it "passes the translate language to the linter" do
       path = write_deck
       expect(linter).to receive(:lint).with(anything, format: "markdown", translate: "Japanese").and_return([])
 
-      cli.run([path, "--llm-base-url", "http://localhost:11434/v1", "--translate", "Japanese"])
+      cli.run([path, "--llm-base-url", "http://localhost:11434/v1", "--llm-model", "llama3", "--translate", "Japanese"])
+    end
+
+    it "lists available models when --llm-model is not specified" do
+      path = write_deck
+      llm_client = instance_double(Slidict::Llm::Client)
+      allow(Slidict::Llm::Client).to receive(:new).and_return(llm_client)
+      allow(llm_client).to receive(:list_models).and_return(%w[gemma2 llama3])
+
+      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1"])
+
+      expect(status).to eq(0)
+      expect(output.string).to include("llama3")
+      expect(output.string).to include("gemma2")
+      expect(output.string).to include("--llm-model")
+    end
+
+    it "surfaces errors when model listing fails" do
+      path = write_deck
+      llm_client = instance_double(Slidict::Llm::Client)
+      allow(Slidict::Llm::Client).to receive(:new).and_return(llm_client)
+      allow(llm_client).to receive(:list_models).and_raise(Slidict::Llm::Client::Error, "connection refused")
+
+      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1"])
+
+      expect(status).to eq(1)
+      expect(output.string).to include("Error: connection refused")
     end
 
     it "requires an LLM endpoint to be configured" do
@@ -84,7 +110,7 @@ RSpec.describe Slidict::Cli::Lint do
       path = write_deck
       allow(linter).to receive(:lint).and_raise(Slidict::Lint::Linter::Error, "no slides found in the given file")
 
-      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1"])
+      status = cli.run([path, "--llm-base-url", "http://localhost:11434/v1", "--llm-model", "llama3"])
 
       expect(status).to eq(1)
       expect(output.string).to include("Error: no slides found in the given file")
