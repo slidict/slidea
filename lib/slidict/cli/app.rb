@@ -7,7 +7,7 @@ module Slidict
   module Cli
     class App
       def initialize(input: $stdin, output: $stdout, renderer: Output::Renderer.new, auth_client: nil,
-                     credentials: nil, sleeper: Kernel, slides_command: nil, server: nil)
+                     credentials: nil, sleeper: Kernel, slides_command: nil, server: nil, lint_command: nil)
         @input = input
         @output = output
         @renderer = renderer
@@ -16,6 +16,7 @@ module Slidict
         @sleeper = sleeper
         @slides_command = slides_command
         @server = server
+        @lint_command = lint_command
       end
 
       def run(argv = [])
@@ -24,6 +25,7 @@ module Slidict
         return auth if options[:command] == "auth"
         return slides(options[:args]) if options[:command] == "slides"
         return serve(options[:args]) if options[:command] == "serve"
+        return lint(options[:args]) if options[:command] == "lint"
 
         config = build_config(options)
         client = llm_client_for(config)
@@ -90,6 +92,13 @@ module Slidict
         if args.first == "serve"
           args.shift
           options[:command] = "serve"
+          options[:args] = args
+          return options
+        end
+
+        if args.first == "lint"
+          args.shift
+          options[:command] = "lint"
           options[:args] = args
           return options
         end
@@ -198,6 +207,10 @@ module Slidict
         server.run(args)
       end
 
+      def lint(args)
+        lint_command.run(args)
+      end
+
       def publish_to_slidict(deck, content, options)
         slides_command.publish(
           id: options[:slide_id],
@@ -214,6 +227,10 @@ module Slidict
 
       def server
         @server ||= Serve.new(output: @output)
+      end
+
+      def lint_command
+        @lint_command ||= Lint.new(output: @output)
       end
 
       def body_format_for(framework)
@@ -246,6 +263,7 @@ module Slidict
           Usage: slidict auth
           Usage: slidict slides <list|show|create|edit> [options]
           Usage: slidict serve [sinatra options]
+          Usage: slidict lint <file> [options]
 
           Generate presentation source files from a short conversation.
 
@@ -253,6 +271,8 @@ module Slidict
             auth             Authenticate the CLI with GitHub and save a CLI access token
             slides           Manage your slides on slidict.io (run `slidict slides -h` for details)
             serve            Serve slide files from ./public with Sinatra
+            lint             Check whether a slide deck's structure will land with its audience
+                             (run `slidict lint -h` for details)
 
           Options:
               --topic TEXT       Presentation topic

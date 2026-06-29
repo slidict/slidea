@@ -13,6 +13,7 @@ Unlike traditional slide generators, Slidict focuses on communication before sli
 - Local-first MVP implemented in Ruby
 - Built-in Sinatra server for browsing generated slides from `public/`
 - OpenAI Compatible API support, so you can point Slidict at OpenAI, Ollama, LM Studio, vLLM, or any other server implementing the same `/chat/completions` endpoint
+- Presentation structure linter: checks whether a Markdown/Asciidoc deck's *structure* (not its looks) will land with an audience
 
 ## Requirements
 
@@ -127,6 +128,34 @@ bin/slidict serve -p 4567 -o 0.0.0.0
 `bin/slidict --publish` and `--slide-id` (see [Usage](#usage)) wrap this same `create`/`edit`
 behavior so you can save the slides you just generated straight to slidict.io.
 
+### `slidict lint`
+
+Diagnoses whether a Markdown or Asciidoc slide deck has a structure an audience can
+actually follow -- not whether it looks nice. Diagnosis only; it does not rewrite the
+file. Requires an LLM endpoint (see [Configuration](#configuration)).
+
+```bash
+bin/slidict lint talk.md --llm-base-url http://localhost:11434/v1 --llm-api-key ollama --llm-model llama3
+```
+
+```text
+[warning] Slide 3: this slide's main point is unclear
+[warning] Slide 5: "MCP" is used without first explaining it
+[info] Slide 8: the closing slide is weak; consider adding a one-sentence takeaway for the audience
+```
+
+It checks six things across the whole deck:
+
+1. Is the audience clear?
+2. Can the overall point be stated in one sentence?
+3. Does the deck flow background → problem → solution → result/learning?
+4. Is any single slide overloaded with information?
+5. Is jargon used without first explaining it?
+6. Does the closing slide give the audience a concrete takeaway?
+
+The deck format (`markdown` or `asciidoc`) is auto-detected from the file extension;
+override it with `--format`. Run `bin/slidict lint -h` for the full list of options.
+
 ## Configuration
 
 Slidict generates slides with an LLM through any OpenAI Compatible API. Configure the
@@ -191,6 +220,7 @@ We optimize for communication, not decoration.
 - [x] Interactive CLI
 - [x] Slide generation
 - [x] OpenAI Compatible API support (configurable base URL, so Ollama, LM Studio, and other compatible servers work out of the box)
+- [x] Presentation structure linter (`slidict lint`)
 
 ## License
 

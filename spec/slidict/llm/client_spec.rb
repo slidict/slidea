@@ -77,4 +77,48 @@ RSpec.describe Slidict::Llm::Client do
       expect { client.generate_slides(deck) }.to raise_error(Slidict::Llm::Client::Error, /connection refused/)
     end
   end
+
+  describe "#lint_slides" do
+    it "parses a successful chat completion into findings" do
+      findings_json = [
+        { "slide" => 3, "severity" => "warning", "message" => "this slide's main point is unclear" },
+        { "slide" => 8, "severity" => "info", "message" => "consider adding a one-sentence takeaway" }
+      ].to_json
+      stub_http_response({ "choices" => [{ "message" => { "content" => findings_json } }] }.to_json)
+
+      findings = client.lint_slides(["# Title", "# Second"])
+
+      expect(findings.size).to eq(2)
+      expect(findings.first.slide).to eq(3)
+      expect(findings.first.severity).to eq("warning")
+      expect(findings.first.message).to eq("this slide's main point is unclear")
+      expect(findings.last.severity).to eq("info")
+    end
+
+    it "returns an empty array when the model finds no issues" do
+      stub_http_response({ "choices" => [{ "message" => { "content" => "[]" } }] }.to_json)
+
+      expect(client.lint_slides(["# Title"])).to eq([])
+    end
+
+    it "defaults an unrecognized severity to info" do
+      findings_json = [{ "slide" => 1, "severity" => "critical", "message" => "x" }].to_json
+      stub_http_response({ "choices" => [{ "message" => { "content" => findings_json } }] }.to_json)
+
+      expect(client.lint_slides(["# Title"]).first.severity).to eq("info")
+    end
+
+    it "raises an Error when the model response is not valid JSON" do
+      stub_http_response({ "choices" => [{ "message" => { "content" => "not json" } }] }.to_json)
+
+      expect { client.lint_slides(["# Title"]) }.to raise_error(Slidict::Llm::Client::Error, /no JSON array found/)
+    end
+
+    it "raises an Error when a finding is missing a required field" do
+      findings_json = [{ "slide" => 1, "severity" => "warning" }].to_json
+      stub_http_response({ "choices" => [{ "message" => { "content" => findings_json } }] }.to_json)
+
+      expect { client.lint_slides(["# Title"]) }.to raise_error(Slidict::Llm::Client::Error, /could not parse/)
+    end
+  end
 end

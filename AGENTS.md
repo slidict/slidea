@@ -21,8 +21,8 @@ OpenAI-compatible chat API.
 
 Run both tests and lint before considering a change complete.
 
-When you add or change a CLI command (or its options), update the "Commands" section
-of `README.md` to document it.
+When you add or change a feature (a CLI command, its options, or any other
+user-facing behavior), update `README.md` to document it.
 
 ## Commit conventions
 
