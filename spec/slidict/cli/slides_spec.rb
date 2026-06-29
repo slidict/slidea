@@ -97,6 +97,18 @@ RSpec.describe Slidict::Cli::Slides do
         expect(output.string).to include("Created slide #1 (draft)")
       end
 
+      it "accepts a --body value that starts with a dash" do
+        allow(client).to receive(:create)
+          .with(title: nil, body: "---\nfoo: bar", body_format: nil, visibility: nil)
+          .and_return("id" => 1, "title" => nil, "status" => "draft", "visibility" => "public",
+                      "updated_at" => "2026-06-27", "body" => "---\nfoo: bar")
+
+        status = command.run(["create", "--body", "---\nfoo: bar"])
+
+        expect(status).to eq(0)
+        expect(output.string).to include("Created slide #1 (draft)")
+      end
+
       it "creates a slide from --file" do
         Dir.mktmpdir do |dir|
           path = File.join(dir, "body.md")
@@ -109,6 +121,17 @@ RSpec.describe Slidict::Cli::Slides do
           status = command.run(["create", "--file", path])
 
           expect(status).to eq(0)
+        end
+      end
+
+      it "reports an error instead of crashing when --file does not exist" do
+        Dir.mktmpdir do |dir|
+          missing_path = File.join(dir, "missing.md")
+
+          status = command.run(["create", "--file", missing_path])
+
+          expect(status).to eq(1)
+          expect(output.string).to include("Error: could not read #{missing_path}")
         end
       end
 
@@ -219,6 +242,25 @@ RSpec.describe Slidict::Cli::Slides do
 
       expect(status).to eq(0)
       expect(output.string).to include("Created slide #1 (draft)")
+    end
+
+    it "logs in and retries once for list when the API rejects the token as invalid" do
+      credentials = instance_double(Slidict::External::SlidictIo::Credentials,
+                                    read_cli_token: { access_token: "tok", token_type: "Bearer" })
+      allow(Slidict::External::SlidictIo::Client).to receive(:new).and_return(client)
+      attempt = 0
+      allow(client).to receive(:list) do
+        attempt += 1
+        raise Slidict::External::SlidictIo::Client::Unauthorized, "invalid_token" if attempt == 1
+
+        { "slides" => [], "has_more" => false }
+      end
+      command = described_class.new(output: output, credentials: credentials, reauthenticate: -> { 0 })
+
+      status = command.run(["list"])
+
+      expect(status).to eq(0)
+      expect(output.string).to include("No slides found.")
     end
 
     it "reports the error when the login flow itself fails after an invalid token" do

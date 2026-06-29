@@ -291,6 +291,9 @@ module Slidict
         raise ArgumentError, "--filename must be relative" if Pathname.new(path).absolute?
         raise ArgumentError, "--filename cannot include .." if Pathname.new(path).each_filename.any?("..")
 
+        # --filename is already relative to public/, so drop a redundant leading
+        # "public/" instead of nesting it twice (public/public/...).
+        path = path.delete_prefix("public/")
         File.extname(path).empty? ? "#{path}#{default_extension_for(framework)}" : path
       end
 

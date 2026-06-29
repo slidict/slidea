@@ -88,7 +88,8 @@ module Slidict
           request["Accept"] = "application/json"
           request["Authorization"] = "#{@token_type} #{@access_token}"
 
-          response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
+          response = Net::HTTP.start(uri.hostname, uri.port,
+                                     use_ssl: uri.scheme == "https", open_timeout: 5, read_timeout: 30) do |http|
             http.request(request)
           end
           body = response.body.to_s.empty? ? {} : JSON.parse(response.body)

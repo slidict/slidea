@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "cgi"
+require "erb"
 require "pathname"
 
 module Slidict
@@ -67,7 +68,10 @@ module Slidict
             end
 
             def escape_path(path)
-              path.split("/").map { |segment| CGI.escape(segment) }.join("/")
+              # CGI.escape turns spaces into "+", which Rack's static file
+              # routing does not unescape back to a literal space. Percent-encode
+              # each segment instead so hrefs match the file on disk.
+              path.split("/").map { |segment| ERB::Util.url_encode(segment) }.join("/")
             end
 
             def h(text)

@@ -97,28 +97,32 @@ module Slidict
         raise ArgumentError, "specify only one of --body or --file" if options[:body] && options[:file]
       end
 
+      # Does not reject values starting with "-": body text or titles may
+      # legitimately start with a dash (e.g. YAML frontmatter), and a genuinely
+      # missing value still surfaces as an "unknown option" error from the
+      # next iteration of the parse loop, or a nil check below.
       def fetch_value!(args, option)
         value = args.shift
-        raise ArgumentError, "#{option} requires a value" if value.nil? || value.start_with?("-")
+        raise ArgumentError, "#{option} requires a value" if value.nil?
 
         value
       end
 
       def list(options)
-        print_slide_list(client.list(page: options[:page]))
-        0
-      rescue External::SlidictIo::Client::Error => e
-        print_client_error(e)
+        with_reauth_retry do
+          print_slide_list(client.list(page: options[:page]))
+          0
+        end
       end
 
       def show(options)
-        print_slide_detail(client.show(options[:id]))
-        0
-      rescue External::SlidictIo::Client::NotFound
-        @output.puts "Error: slide not found"
-        1
-      rescue External::SlidictIo::Client::Error => e
-        print_client_error(e)
+        with_reauth_retry do
+          print_slide_detail(client.show(options[:id]))
+          0
+        rescue External::SlidictIo::Client::NotFound
+          @output.puts "Error: slide not found"
+          1
+        end
       end
 
       def create(options)
@@ -139,8 +143,7 @@ module Slidict
       end
 
       def submit(verb)
-        reauthenticated = false
-        begin
+        with_reauth_retry do
           slide = yield
           @output.puts "#{verb} slide ##{slide["id"]} (draft)"
           print_slide_detail(slide)
@@ -155,6 +158,16 @@ module Slidict
           print_rate_limited
         rescue External::SlidictIo::Client::Unprocessable => e
           print_unprocessable(e)
+        end
+      end
+
+      # Shared by list/show/submit: on a 401 from an expired/invalid token,
+      # silently re-authenticate once (via the injected reauthenticate flow)
+      # and retry the same request before giving up.
+      def with_reauth_retry
+        reauthenticated = false
+        begin
+          yield
         rescue External::SlidictIo::Client::Unauthorized => e
           if !reauthenticated && reauthenticate!
             reauthenticated = true
@@ -167,9 +180,11 @@ module Slidict
       end
 
       def read_body(options)
-        return File.read(options[:file]) if options[:file]
+        return options[:body] unless options[:file]
 
-        options[:body]
+        File.read(options[:file])
+      rescue Errno::ENOENT, Errno::EACCES => e
+        raise ArgumentError, "could not read #{options[:file]}: #{e.message}"
       end
 
       def client

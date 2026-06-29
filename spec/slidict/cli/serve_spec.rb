@@ -27,5 +27,20 @@ RSpec.describe Slidict::Cli::Serve do
         expect(response.body).not_to include("notes.txt")
       end
     end
+
+    it "links to a percent-encoded href that resolves back to a filename with spaces" do
+      Dir.mktmpdir do |dir|
+        File.write(File.join(dir, "my slide.md"), "# Demo")
+
+        app = described_class.new(public_dir: dir).send(:build_app)
+        mock = Rack::MockRequest.new(app)
+        index = mock.get("/")
+
+        expect(index.body).to include('href="/my%20slide.md"')
+
+        slide = mock.get("/my%20slide.md")
+        expect(slide.status).to eq(200)
+      end
+    end
   end
 end

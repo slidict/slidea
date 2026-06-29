@@ -38,6 +38,16 @@ RSpec.describe Slidict::External::SlidictIo::Client do
       end
       expect(response).to be_a(Net::HTTPOK)
     end
+
+    it "sets connection and read timeouts so a hung API cannot block forever" do
+      stub_http_response({ "slides" => [], "has_more" => false }.to_json)
+
+      client.list
+
+      expect(Net::HTTP).to have_received(:start).with(
+        anything, anything, use_ssl: anything, open_timeout: 5, read_timeout: 30
+      )
+    end
   end
 
   describe "#show" do

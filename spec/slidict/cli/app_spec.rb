@@ -72,6 +72,23 @@ RSpec.describe Slidict::Cli::App do
       end
     end
 
+    it "does not duplicate public/ when --filename already starts with it" do
+      Dir.mktmpdir do |dir|
+        Dir.chdir(dir) do
+          cli.run([
+                    "--topic", "Observability",
+                    "--duration", "10 minutes",
+                    "--audience", "SREs",
+                    "--goal", "adopt the checklist",
+                    "--filename", "public/demo"
+                  ])
+
+          expect(File.exist?("public/demo.md")).to be(true)
+          expect(File.exist?("public/public/demo.md")).to be(false)
+        end
+      end
+    end
+
     it "increments the default output filename when a sequential file exists" do
       Dir.mktmpdir do |dir|
         Dir.chdir(dir) do
