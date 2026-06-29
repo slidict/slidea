@@ -34,6 +34,14 @@ module Slidict
         slides_from(content)
       end
 
+      # slide_texts is an array of slide bodies (1-indexed by position) as
+      # produced by Slidict::Lint::SlideParser. Returns an array of
+      # Slidict::Lint::Finding.
+      def lint_slides(slide_texts)
+        content = chat_completion(lint_prompt_for(slide_texts))
+        findings_from(content)
+      end
+
       private
 
       def prompt_for(deck)
@@ -49,6 +57,66 @@ module Slidict
           Respond with the JSON array only: no commentary, no markdown code fences,
           and no reasoning or thinking content before or after it.
         PROMPT
+      end
+
+      LINT_PROMPT_TEMPLATE = <<~PROMPT
+        You are a presentation structure linter for tech talks and lightning talks.
+        Your goal is not to judge how the slides look, but to diagnose whether the
+        structure will actually land with an audience.
+
+        Evaluate the deck as a whole against these six checks:
+
+        1. Is the audience clear (who is this talk for)?
+        2. Can the overall point be stated in one sentence?
+        3. Does the deck flow background -> problem -> solution -> result/learning
+           (call out where the flow breaks down)?
+        4. Is any single slide overloaded with information?
+        5. Is jargon used without first explaining it?
+        6. Does the closing slide give the audience one concrete takeaway?
+
+        For each finding, name the single slide it relates to most. For deck-wide
+        findings (unclear audience, unclear thesis, etc.), point to the slide where
+        the problem is most visible, or slide 1 if you cannot tell.
+
+        Decide severity using these rules:
+        - warning: likely to block audience understanding (checks 1-5)
+        - info: a suggestion that would make things better (check 6, or minor polish)
+
+        Here is the slide content ("--- Slide N ---" marks each slide boundary):
+
+        %<numbered>s
+
+        Respond with a JSON array of findings only. Each item must be an object of
+        the form {"slide": <integer>, "severity": "warning" or "info", "message": "<one sentence>"}.
+
+        Do not include any commentary, markdown code fences, or text other than the
+        JSON array. Return an empty array [] if you find no issues.
+      PROMPT
+
+      def lint_prompt_for(slide_texts)
+        numbered = slide_texts.each_with_index.map { |text, i| "--- Slide #{i + 1} ---\n#{text}" }.join("\n\n")
+        format(LINT_PROMPT_TEMPLATE, numbered: numbered)
+      end
+
+      def findings_from(content)
+        parsed = JSON.parse(extract_json_array(content))
+        raise Error, "expected a JSON array of findings" unless parsed.is_a?(Array)
+
+        parsed.map { |item| finding_from(item) }
+      rescue JSON::ParserError, KeyError, ArgumentError, TypeError => e
+        raise Error, "could not parse model response: #{e.message}"
+      end
+
+      def finding_from(item)
+        Lint::Finding.new(
+          slide: Integer(item.fetch("slide")),
+          severity: normalize_severity(item["severity"]),
+          message: item.fetch("message")
+        )
+      end
+
+      def normalize_severity(value)
+        %w[warning info].include?(value) ? value : "info"
       end
 
       def chat_completion(prompt)
