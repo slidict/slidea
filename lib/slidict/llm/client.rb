@@ -204,7 +204,7 @@ module Slidict
           return candidate if candidate
         end
 
-        raise Error, "no JSON array found in model response"
+        raise Error, "no JSON array found in model response\nThe model may be too small to follow the required output format. Try using a larger model."
       end
 
       def json_array_from(content, start)
