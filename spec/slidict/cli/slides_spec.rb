@@ -3,7 +3,7 @@
 require "stringio"
 require "tmpdir"
 
-RSpec.describe Slidict::SlidesCommand do
+RSpec.describe Slidict::Cli::Slides do
   let(:output) { StringIO.new }
   let(:client) { instance_double(Slidict::SlidesClient) }
   let(:command) { described_class.new(output: output, client: client) }

@@ -7,7 +7,7 @@ rescue LoadError
 end
 require "tmpdir"
 
-RSpec.describe Slidict::Server do
+RSpec.describe Slidict::Cli::Serve do
   before do
     skip "rack/sinatra dependencies are not installed" unless defined?(Rack::MockRequest)
   end

@@ -3,7 +3,7 @@
 require "stringio"
 require "tmpdir"
 
-RSpec.describe Slidict::CLI do
+RSpec.describe Slidict::Cli::App do
   let(:output) { StringIO.new }
   let(:input) { StringIO.new }
   let(:cli) { described_class.new(input: input, output: output) }
@@ -235,7 +235,7 @@ RSpec.describe Slidict::CLI do
     end
 
     it "publishes the generated slides as a new draft when --publish is given" do
-      slides_command = instance_double(Slidict::SlidesCommand, publish: 0)
+      slides_command = instance_double(Slidict::Cli::Slides, publish: 0)
       cli = described_class.new(input: input, output: output, slides_command: slides_command)
 
       Dir.mktmpdir do |dir|
@@ -259,7 +259,7 @@ RSpec.describe Slidict::CLI do
     end
 
     it "edits an existing draft when --slide-id is given" do
-      slides_command = instance_double(Slidict::SlidesCommand, publish: 0)
+      slides_command = instance_double(Slidict::Cli::Slides, publish: 0)
       cli = described_class.new(input: input, output: output, slides_command: slides_command)
 
       Dir.mktmpdir do |dir|
@@ -279,7 +279,7 @@ RSpec.describe Slidict::CLI do
     end
 
     it "delegates the slides command to SlidesCommand" do
-      slides_command = instance_double(Slidict::SlidesCommand, run: 0)
+      slides_command = instance_double(Slidict::Cli::Slides, run: 0)
       cli = described_class.new(input: input, output: output, slides_command: slides_command)
 
       status = cli.run(["slides", "list", "--page", "2"])
@@ -289,7 +289,7 @@ RSpec.describe Slidict::CLI do
     end
 
     it "delegates the serve command and passes arguments to the Sinatra server" do
-      server = instance_double(Slidict::Server, run: 0)
+      server = instance_double(Slidict::Cli::Serve, run: 0)
       cli = described_class.new(input: input, output: output, server: server)
 
       status = cli.run(["serve", "-p", "4567", "-o", "0.0.0.0"])
