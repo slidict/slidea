@@ -107,17 +107,17 @@ module Slidict
       def list(options)
         print_slide_list(client.list(page: options[:page]))
         0
-      rescue SlidesClient::Error => e
+      rescue External::SlidesClient::Error => e
         print_client_error(e)
       end
 
       def show(options)
         print_slide_detail(client.show(options[:id]))
         0
-      rescue SlidesClient::NotFound
+      rescue External::SlidesClient::NotFound
         @output.puts "Error: slide not found"
         1
-      rescue SlidesClient::Error => e
+      rescue External::SlidesClient::Error => e
         print_client_error(e)
       end
 
@@ -145,23 +145,23 @@ module Slidict
           @output.puts "#{verb} slide ##{slide["id"]} (draft)"
           print_slide_detail(slide)
           0
-        rescue SlidesClient::NotFound
+        rescue External::SlidesClient::NotFound
           @output.puts "Error: slide not found"
           1
-        rescue SlidesClient::NotEditable
+        rescue External::SlidesClient::NotEditable
           @output.puts "Error: this slide is already published. Edit it from the Web UI instead."
           1
-        rescue SlidesClient::RateLimited
+        rescue External::SlidesClient::RateLimited
           print_rate_limited
-        rescue SlidesClient::Unprocessable => e
+        rescue External::SlidesClient::Unprocessable => e
           print_unprocessable(e)
-        rescue SlidesClient::Unauthorized => e
+        rescue External::SlidesClient::Unauthorized => e
           if !reauthenticated && reauthenticate!
             reauthenticated = true
             retry
           end
           print_client_error(e)
-        rescue SlidesClient::Error => e
+        rescue External::SlidesClient::Error => e
           print_client_error(e)
         end
       end
@@ -178,7 +178,7 @@ module Slidict
           token = @credentials.read_cli_token if token.nil? && reauthenticate!
           raise ArgumentError, "not authenticated. Run `slidict auth` first." unless token
 
-          SlidesClient.new(access_token: token[:access_token], token_type: token[:token_type])
+          External::SlidesClient.new(access_token: token[:access_token], token_type: token[:token_type])
         end
       end
 

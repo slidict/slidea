@@ -161,7 +161,7 @@ module Slidict
       end
 
       def auth
-        client = @auth_client || AuthClient.new
+        client = @auth_client || External::AuthClient.new
         credentials = @credentials || Credentials.new
 
         device = client.request_device_code
@@ -180,12 +180,12 @@ module Slidict
           )
           @output.puts "4. Saved CLI access token to #{path}"
           return 0
-        rescue AuthClient::Pending
+        rescue External::AuthClient::Pending
           return login_expired if Time.now >= deadline
 
           @sleeper.sleep(device[:interval])
         end
-      rescue AuthClient::Error, KeyError => e
+      rescue External::AuthClient::Error, KeyError => e
         @output.puts "Error: GitHub auth failed (#{e.message})"
         1
       end
