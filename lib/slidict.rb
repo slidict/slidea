@@ -11,8 +11,8 @@ require_relative "slidict/deck"
 require_relative "slidict/external/auth_client"
 require_relative "slidict/external/slides_client"
 require_relative "slidict/llm_client"
-require_relative "slidict/markdown_renderer"
 require_relative "slidict/output/format"
+require_relative "slidict/output/renderer"
 require_relative "slidict/version"
 
 module Slidict

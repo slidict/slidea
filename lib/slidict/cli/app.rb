@@ -6,7 +6,7 @@ require "pathname"
 module Slidict
   module Cli
     class App
-      def initialize(input: $stdin, output: $stdout, renderer: MarkdownRenderer.new, auth_client: nil,
+      def initialize(input: $stdin, output: $stdout, renderer: Output::Renderer.new, auth_client: nil,
                      credentials: nil, sleeper: Kernel, slides_command: nil, server: nil)
         @input = input
         @output = output
