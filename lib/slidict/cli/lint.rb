@@ -31,6 +31,7 @@ module Slidict
       def run_lint(options)
         config = build_config(options)
         return llm_required unless config.llm_enabled?
+        return print_available_models(config) if config.model.nil?
 
         print_findings(lint(options, config))
       end
@@ -112,6 +113,20 @@ module Slidict
         1
       end
 
+      def print_available_models(config)
+        client = Llm::Client.new(base_url: config.base_url, api_key: config.api_key, model: nil)
+        models = client.list_models
+        if models.empty?
+          @output.puts "No models available at #{config.base_url}"
+        else
+          @output.puts "Available models (specify one with --llm-model NAME or SLIDICT_LLM_MODEL=NAME):"
+          models.each { |m| @output.puts "  #{m}" }
+        end
+        0
+      rescue Llm::Client::Error => e
+        print_error(e)
+      end
+
       def llm_required
         @output.puts "Error: lint requires an LLM endpoint (--llm-base-url or SLIDICT_LLM_BASE_URL)"
         1
@@ -124,7 +139,7 @@ module Slidict
               --format FORMAT     markdown or asciidoc (default: auto-detected from extension)
               --llm-base-url URL  OpenAI Compatible API base URL (env: SLIDICT_LLM_BASE_URL)
               --llm-api-key KEY   API key for the LLM endpoint (env: SLIDICT_LLM_API_KEY)
-              --llm-model NAME    Model name to request (env: SLIDICT_LLM_MODEL, default: gpt-4o-mini)
+              --llm-model NAME    Model name to request (env: SLIDICT_LLM_MODEL); omit to list available models
               --translate LANG    Translate findings into the given language (e.g. Japanese)
           -h, --help               Show this help
         HELP

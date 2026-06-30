@@ -21,12 +21,18 @@ module Slidict
       # Checks that the endpoint is reachable before the (slower, more
       # expensive) chat completion request is made. Raises Error on failure.
       def verify_connection!
-        uri = endpoint_uri("models")
-        request = Net::HTTP::Get.new(uri)
-        request["Authorization"] = "Bearer #{@api_key}"
-        response = perform_request(uri, request)
-
+        response = get_models_response
         raise Error, "#{response.code} #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+      end
+
+      # Returns a sorted array of model IDs available at the endpoint.
+      def list_models
+        response = get_models_response
+        raise Error, "#{response.code} #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+
+        Array(JSON.parse(response.body)["data"]).map { |m| m["id"] }.sort
+      rescue JSON::ParserError => e
+        raise Error, "could not parse models response: #{e.message}"
       end
 
       def generate_slides(deck)
@@ -43,6 +49,13 @@ module Slidict
       end
 
       private
+
+      def get_models_response
+        uri = endpoint_uri("models")
+        request = Net::HTTP::Get.new(uri)
+        request["Authorization"] = "Bearer #{@api_key}"
+        perform_request(uri, request)
+      end
 
       def prompt_for(deck)
         <<~PROMPT
@@ -191,7 +204,7 @@ module Slidict
           return candidate if candidate
         end
 
-        raise Error, "no JSON array found in model response"
+        raise Error, "no JSON array found in model response\nThe model may be too small to follow the required output format. Try using a larger model."
       end
 
       def json_array_from(content, start)

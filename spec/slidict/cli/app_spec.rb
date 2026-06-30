@@ -207,7 +207,8 @@ RSpec.describe Slidict::Cli::App do
 
         cli.run([
                   "--topic", "Observability", "--duration", "x", "--audience", "x", "--goal", "x",
-                  "--llm-base-url", "http://localhost:11434/v1", "--llm-api-key", "ollama", "--output", path
+                  "--llm-base-url", "http://localhost:11434/v1", "--llm-api-key", "ollama",
+                  "--llm-model", "llama3", "--output", path
                 ])
 
         expect(File.read(path)).to include("# Generated title")
@@ -225,7 +226,8 @@ RSpec.describe Slidict::Cli::App do
 
         status = cli.run([
                            "--topic", "Observability", "--duration", "x", "--audience", "x", "--goal", "x",
-                           "--llm-base-url", "http://localhost:11434/v1", "--llm-api-key", "ollama", "--output", path
+                           "--llm-base-url", "http://localhost:11434/v1", "--llm-api-key", "ollama",
+                           "--llm-model", "llama3", "--output", path
                          ])
 
         expect(status).to eq(1)
@@ -242,12 +244,27 @@ RSpec.describe Slidict::Cli::App do
       Dir.mktmpdir do |dir|
         path = File.join(dir, "slides.md")
 
-        status = cli.run(["--llm-base-url", "http://localhost:11434/v1", "--output", path])
+        status = cli.run(["--llm-base-url", "http://localhost:11434/v1", "--llm-model", "llama3", "--output", path])
 
         expect(status).to eq(1)
         expect(output.string).to include("Error: LLM request failed (connection refused)")
         expect(output.string).not_to include("What would you like to talk about?")
         expect(File.exist?(path)).to be(false)
+      end
+    end
+
+    it "lists available models when --llm-base-url is set but --llm-model is not" do
+      llm_client = instance_double(Slidict::Llm::Client)
+      allow(Slidict::Llm::Client).to receive(:new).and_return(llm_client)
+      allow(llm_client).to receive(:list_models).and_return(%w[gemma2 llama3])
+
+      Dir.mktmpdir do |dir|
+        status = cli.run(["--llm-base-url", "http://localhost:11434/v1", "--output", File.join(dir, "slides.md")])
+
+        expect(status).to eq(0)
+        expect(output.string).to include("llama3")
+        expect(output.string).to include("gemma2")
+        expect(output.string).to include("--llm-model")
       end
     end
 

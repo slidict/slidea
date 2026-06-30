@@ -6,7 +6,7 @@ RSpec.describe Slidict::Config do
       config = described_class.from_env({})
 
       expect(config.base_url).to be_nil
-      expect(config.model).to eq("gpt-4o-mini")
+      expect(config.model).to be_nil
       expect(config.api_key).to be_nil
       expect(config.llm_enabled?).to be(false)
     end
