@@ -46,7 +46,9 @@ module Slidict
       missing = REQUIRED_FIELDS.reject { |field| present?(attributes[field]) }
       raise ArgumentError, "#{path} is missing required fields: #{missing.join(', ')}" unless missing.empty?
 
-      raise ArgumentError, "#{path} id must use lowercase letters, numbers, and hyphens" unless attributes["id"].match?(/\A[a-z0-9-]+\z/)
+      unless attributes["id"].is_a?(String) && attributes["id"].match?(/\A[a-z0-9-]+\z/)
+        raise ArgumentError, "#{path} id must be a string using lowercase letters, numbers, and hyphens"
+      end
       raise ArgumentError, "#{path} slides must be a non-empty array" unless attributes["slides"].is_a?(Array) && !attributes["slides"].empty?
 
       attributes["slides"].each_with_index do |slide, index|
