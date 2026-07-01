@@ -178,6 +178,14 @@ RSpec.describe Slidict::Cli::App do
       end
     end
 
+    it "rejects an unknown presentation method before prompting" do
+      status = cli.run(["--method", "unknown", "--output", "slides.md"])
+
+      expect(status).to eq(1)
+      expect(output.string).to include("Error: unknown presentation method unknown")
+      expect(output.string).not_to include("What would you like to talk about?")
+    end
+
     it "lists presentation methods" do
       status = cli.run(["list-methods"])
 

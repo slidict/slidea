@@ -41,7 +41,7 @@ module Slidict
           audience: ask("Who is the audience?", options[:audience]),
           goal: ask("What should the audience remember or do?", options[:goal]),
           framework: options[:framework],
-          presentation_method: method_for(options[:method])
+          presentation_method: options[:presentation_method]
         )
 
         if client
@@ -167,6 +167,7 @@ module Slidict
         end
 
         options[:output] ||= output_path_for(options[:framework], options[:filename])
+        options[:presentation_method] = method_for(options[:method])
         options
       end
 
